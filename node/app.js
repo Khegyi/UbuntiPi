@@ -1,20 +1,28 @@
 const express = require('express');
 const cors = require('cors');
+const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const MongoClient = require("mongodb").MongoClient;
 const assert = require('assert');
 const todolistRepo = require('./repos/todolistRepo');
-
+const ObjectId = require('mongodb').ObjectId;
 const data = require('./data/example.json');
 const app = express();
 const bookRouter = express.Router();
-const port = process.env.PORT || 3080;
+const port = process.env.PORT || 4000
 
 const db = mongoose.connect('mongodb://localhost:27017/TodoList');
 const todoItem = require('./models/todoItemModel');
 
 const url = "mongodb://localhost:27017";
 const dbName = "TodoList";
+
+
+
+
+
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.json());
 
 async function main(){
     const client = new MongoClient(url);
@@ -43,7 +51,24 @@ async function main(){
 }
 //main();
 
-function connect(){
+
+
+async function addOne(data){
+  MongoClient.connect(url, function(err, db) {
+      if (err) throw err;
+      var dbo = db.db("mydb");
+      data.done=false;
+      data.status="Todo";
+        dbo.collection("customers").insertOne(data, function(err, res) {
+          if (err) throw err;
+          
+          db.close();
+          return res;
+  });
+});
+}
+
+function addMany(){
     MongoClient.connect(url, function(err, db) {
         if (err) throw err;
         var dbo = db.db("mydb");
@@ -63,7 +88,7 @@ function connect(){
             { name: 'Chuck', address: 'Main Road 989'},
             { name: 'Viola', address: 'Sideway 1633'}
           ];
-          dbo.collection("customers").insertMany(myobj, function(err, res) {
+          dbo.collection("customers").insertMany(data, function(err, res) {
             if (err) throw err;
             console.log("Number of documents inserted: " + res.insertedCount, res);
             db.close();
@@ -88,20 +113,33 @@ function delete_collections(){
 }
 
 
- function find(){
+function update(query, modifer){
+  MongoClient.connect(url, async function(err, db) {
+      if (err) throw err;
+      var dbo = db.db("mydb");
+      console.log(query, modifer);
+  await dbo.collection("customers").updateOne(query, modifer, function(err, result) {
+          if (err) throw err;
+          console.log(result.length);
+          db.close();
+          return result;
+      });
+    });
+}
+
+ function find(query){
     MongoClient.connect(url, async function(err, db) {
         if (err) throw err;
         var dbo = db.db("mydb");
-    await dbo.collection("customers").find({}).toArray(function(err, result) {
+    await dbo.collection("customers").find(query).toArray(function(err, result) {
             if (err) throw err;
             console.log(result.length);
-            db.db("mydb").dropDatabase();
             db.close();
             return result;
         });
       });
 }
-console.log("finded");
+//console.log("finded");
 //connect();
 app.use(cors({
     origin: '*'
@@ -109,18 +147,13 @@ app.use(cors({
 
 bookRouter.route("/test")
     .get(async (req,res) => {
-     const response = { hello: 'Welcomee'};
-/*        todoItem.find((err, est) => {
-           if(err){
-             return  res.send(err);
-           }
-            return  res.json(est);
-       }); */
 
+       const filter = req.body;
+       console.log(req)
        MongoClient.connect(url, function(err, db) {
         if (err) throw err;
         var dbo = db.db("mydb");
-     dbo.collection("customers").find({}).toArray(function(err, result) {
+     dbo.collection("customers").find(/* filter */).toArray(function(err, result) {
             if (err) throw err;
             console.log(result.length);
             db.close();
@@ -132,39 +165,97 @@ bookRouter.route("/test")
 /*      const finded = await find();
 console.log(find());
        res.json(find()); */
+    })
+    .post(async (req,res) => {
+      //console.log(req.body);
+      //const response = { hello: "creation todo", req};
+      
+
+      const filter = req.body;
+      console.log(req);
+      MongoClient.connect(url, function(err, db) {
+       if (err) throw err;
+       var dbo = db.db("mydb");
+    dbo.collection("customers").find({done: true}).toArray(function(err, result) {
+           if (err) throw err;
+           console.log(result.length);
+           db.close();
+           res.json(result);
+       });
+     });
+    
+    // res.json(response);
     });
 
 
-    bookRouter.route("/delete")
-    .get(async (req,res) => {
-     const response = { hello: 'Welcomee'};
+bookRouter.route("/delete")
+.delete(async (req,res) => {
 
-     MongoClient.connect(url, function(err, db) {
-        if (err) throw err;
-        var dbo = db.db("mydb");
-        var myquery = { address: /^H/ };
-        dbo.collection("customers").deleteMany(myquery, function(err, obj) {
-          if (err) throw err;
-          console.log(obj);
-          db.close();
-        });
-      });
-
+  MongoClient.connect(url, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db("mydb");
+    var myquery = { _id: ObjectId(req.body.id) };
+    console.log(myquery);
+    dbo.collection("customers").deleteOne(myquery, function(err, obj) {
+      if (err) throw err;
+      console.log(obj);
+      
+      db.close();
+      return res.status(200).json(req.body.id);
+      //return obj;
     });
+  });
+
+});
 
 
-    bookRouter.route("/create_collection")
-    .get(async (req,res) => {
-     const response = { hello: 'create'};
-     connect();
-     res.json(response);
-    });
-    bookRouter.route("/delete_collections")
-    .get(async (req,res) => {
-     const response = { hello: 'delete'};
-     delete_collections();
-     res.json(response);
-    });
+bookRouter.route("/create_collection")
+.get(async (req,res) => {
+  const response = { hello: 'create_collection'};
+  addMany();
+  res.json(response);
+});
+
+bookRouter.route("/add_todo")
+.post(async (req,res) => {
+  //console.log(req.body);
+  //const response = { hello: "creation todo", req};
+  
+  await addOne(req.body);
+  return res.status(201).json(req.body);
+
+// res.json(response);
+});
+
+bookRouter.route("/modify_todo")
+.patch(async (req,res) => {
+
+  const query = { _id: ObjectId(req.body.id) };
+  const modifer = 
+  {
+    $set: req.body.modifer,
+    $currentDate: { lastModified: true }
+  };
+  
+  await update(query, modifer);
+  return res.status(203).json(req.body);
+
+// res.json(response);
+});
+
+bookRouter.route("/delete_collections")
+.get(async (req,res) => {
+  const response = { hello: 'delete'};
+  delete_collections();
+  res.json(response);
+});
+
+bookRouter.route("/find_one")
+.get(async (req,res) => {
+  const response = { hello: 'find'};
+  find();
+  res.json(response);
+});
 
 app.use('/api', bookRouter);
 
