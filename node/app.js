@@ -209,6 +209,26 @@ bookRouter.route("/delete")
 });
 
 
+bookRouter.route("/deleteMany")
+.delete(async (req,res) => {
+
+  MongoClient.connect(url, function(err, db) {
+    if (err) throw err;
+    var dbo = db.db("mydb");
+    var myquery = { done: false };
+    console.log(myquery);
+    dbo.collection("customers").deleteMany(myquery, function(err, obj) {
+      if (err) throw err;
+      console.log(obj);
+      
+      db.close();
+      return res.status(200).json(req.body.id);
+      //return obj;
+    });
+  });
+
+});
+
 bookRouter.route("/create_collection")
 .get(async (req,res) => {
   const response = { hello: 'create_collection'};

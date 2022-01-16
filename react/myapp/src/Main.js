@@ -1,22 +1,37 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import axios from "axios";
+import * as dayjs from "dayjs";
+import NewItemModal from "./NewItemModal";
+import { Select, Switch, DatePicker, Space, Button, Input, Table } from "antd";
 
-import { Button, Input, Table } from "antd";
 import "antd/dist/antd.css";
-import { Select, Switch } from "antd";
 
 function Main() {
   const [list, SetList] = useState([]);
+  const [ogList, SetOgList] = useState([]);
   const [allSum, SetAllSum] = useState(0);
-  const [newTodo, SetNewTodo] = useState({ periodic:false});
+  const [newTodo, SetNewTodo] = useState({});
   /* const [filter, SetFilter] = useState({ done: false}); */
 
   const { Option } = Select;
   function onChange(pagination, filters, sorter, extra) {
+    calcAllSum(extra.currentDataSource);
+
     console.log("params", pagination, filters, sorter, extra);
   }
-
+  function onDateFilter(data) {
+    let tempList = [...ogList];
+    if (data != null) {
+     const res = tempList.filter((listitem) => {
+        return dayjs(data).isSame(listitem.dueDate, "month");
+      });
+      tempList = res;
+    }
+    calcAllSum(tempList);
+    SetList(tempList);
+    console.log(tempList);
+  }
 
   const columns = [
     {
@@ -39,14 +54,14 @@ function Main() {
       ],
       filterSearch: true,
       onFilter: (value, record) => record.type.includes(value),
-     sorter: (a, b) => a.type.localeCompare(b.type),
+      sorter: (a, b) => a.type.localeCompare(b.type),
     },
     {
       title: "Amount",
       dataIndex: "amount",
       sorter: (a, b) => a.amount - b.amount,
     },
- /*    {
+    /*    {
       title: "Status",
       dataIndex: "status",
     }, */
@@ -59,13 +74,27 @@ function Main() {
       title: "Description",
       dataIndex: "description",
     },
-/*     {
-      title: "Done",
-      dataIndex: "done",
-    }, */
+    {
+      title: "Owner",
+      dataIndex: "owner",
+    },
     {
       title: "Periodic",
       dataIndex: "periodic",
+    },
+    {
+      title: "Action",
+      key: "operation",
+      fixed: "right",
+      width: 100,
+      render: (text, record) => (
+        <Space size="middle">
+          <Button type="primary">Edit</Button>
+          <Button disabled type="delete" danger onClick={() => deleteTodo(record._id)}>
+            Delete
+          </Button>
+        </Space>
+      ),
     },
   ];
 
@@ -82,11 +111,11 @@ function Main() {
 
         response.data.map((site) => {
           site.key = site._id;
-          site.periodic = site.periodic ? "Rendszeres" : "Egyszeri";
-          summa += parseInt(site.amount); 
+          /*   site.periodic = site.periodic ? "Rendszeres" : "Egyszeri"; */
+          summa += parseInt(site.amount);
         });
-        SetAllSum(summa);
         SetList(response.data);
+        SetOgList(response.data);
       } else {
         let response = await axios({
           method: "get",
@@ -95,10 +124,12 @@ function Main() {
         console.log(response.data);
         response.data.map((site) => {
           site.key = site._id;
-          site.periodic = site.periodic ? "Rendszeres" : "Egyszeri";
-          summa += parseInt(site.amount); 
+          /*           site.periodic = site.periodic ? "Rendszeres" : "Egyszeri";
+          site.periodic = site.periodic ? "Rendszeres" : "Egyszeri"; */
+          summa += parseInt(site.amount);
+          SetOgList(response.data);
         });
-        SetAllSum(summa);
+        calcAllSum(response.data)
         SetList(response.data);
       }
 
@@ -108,6 +139,14 @@ function Main() {
     } catch (error) {
       console.error(error);
     }
+  }
+
+  function calcAllSum(newlist) {
+    let summa = 0;
+    newlist.map((listitem) => {
+      summa += parseInt(listitem.amount);
+    });
+    SetAllSum(summa);
   }
 
   async function createTodoApi(data) {
@@ -138,6 +177,20 @@ function Main() {
       console.error(error);
     }
   }
+
+  /*   async function deleteManyApi(id, cb) {
+    try {
+      const response = await axios({
+        method: "delete",
+        url: "http://192.168.0.111:4000/api/deleteMany",
+        data: { id: id },
+      });
+
+      console.log(response);
+    } catch (error) {
+      console.error(error);
+    }
+  } */
 
   async function modifyTodoApi(data, cb) {
     try {
@@ -198,88 +251,27 @@ function Main() {
   return (
     <div className="App">
       <header className="App-header">
-        <Button name="refresh" onClick={() => getUser()} value="refresh">
-          Refresh
-        </Button>
-        <Button
-          type="button"
-          name="filter"
-          onClick={() => getUser("done")}
-          value="filter"
-        >
-          Filter
-        </Button>
-        <div>
-          <Input
-            type="text"
-            name="name"
-            onChange={(e) => modifyNewTodo(e)}
-            placeholder="name"
-          />
-          <Select
-            showSearch
-            style={{ width: "100%" }}
-            placeholder="Type"
-            name="type"
-            optionFilterProp="children"
-            onSelect={(e, t) => modifyNewTodo(e, t, "type")}
-            filterOption={(input, option) =>
-              option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-            }
-            filterSort={(optionA, optionB) =>
-              optionA.children
-                .toLowerCase()
-                .localeCompare(optionB.children.toLowerCase())
-            }
-          >
-            <Option value="lakás">Lakás</Option>
-            <Option value="szórakozás">Szórakozás</Option>
-            <Option value="élelmiszer">Élelmiszer</Option>
-            <Option value="személyes">Személyes</Option>
-            <Option value="egyéb">Egyéb</Option>
-            <Option value="ajándék/adomány">Ajándék/Adomány</Option>
-            <Option value="közlekedés">Közlekedés</Option>
-          </Select>
-          <Input
-            type="text"
-            name="description"
-            onChange={(e) => modifyNewTodo(e)}
-            placeholder="description"
-          />
-          <Input
-            type="date"
-            name="dueDate"
-            onChange={(e) => modifyNewTodo(e)}
-          />
-          <Input
-            type="text"
-            name="amount"
-            placeholder="amount"
-            onChange={(e) => modifyNewTodo(e)}
-          />
-          <Switch
-            name="periodic"
-            checkedChildren="Rendszeres"
-            unCheckedChildren="Egyszeri"
-            onChange={(e) => modifyRegular(e, "periodic")}
-          />
+        <div className="table_btns">
+          <DatePicker onChange={(e) => onDateFilter(e)} picker="month" />
+          <Button name="refresh" onClick={() => getUser()} value="refresh">
+            Refresh
+          </Button>
+          {/*        <Button name="deletemany" onClick={() => deleteTodoApi()} value="refresh">
+          Delete Not Done
+        </Button> */}
           <Button
             type="button"
-            name="create"
-            onClick={() => createTodo()}
-            value="Add"
+            name="filter"
+            onClick={() => getUser("done")}
+            value="filter"
           >
-            Add
+            Filter
           </Button>
-        </div>
-
-        <div>
+          <NewItemModal createFn={createTodoApi} getUserFn={getUser} />
           <Table columns={columns} dataSource={list} onChange={onChange} />
         </div>
-        <div>
-          Total: {allSum} HUF
-        </div>
-        <div>
+        <div>Total: {allSum} HUF</div>
+        {/*         <div>
           {list.map((tet) => {
             return (
               <div data-isdone={tet.done} key={tet._id}>
@@ -294,7 +286,7 @@ function Main() {
               </div>
             );
           })}
-        </div>
+        </div> */}
       </header>
     </div>
   );
