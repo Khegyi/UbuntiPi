@@ -4,6 +4,8 @@ import axios from "axios";
 import * as dayjs from "dayjs";
 import NewItemModal from "./NewItemModal";
 import { Select, Switch, DatePicker, Space, Button, Input, Table } from "antd";
+import { Row, Col, Divider } from "antd";
+import PieChart from "./PieChart";
 
 import "antd/dist/antd.css";
 
@@ -12,23 +14,34 @@ function Main() {
   const [ogList, SetOgList] = useState([]);
   const [allSum, SetAllSum] = useState(0);
   const [newTodo, SetNewTodo] = useState({});
+  const [sumByType, setsumByType] = useState([]);
+  const [pieData, setpieData] = useState({});
   /* const [filter, SetFilter] = useState({ done: false}); */
 
   const { Option } = Select;
   function onChange(pagination, filters, sorter, extra) {
     calcAllSum(extra.currentDataSource);
-
+    if (filters.type != undefined) {
+      if (filters.type.length == 1) {
+        calcSumWithOneType(extra.currentDataSource);
+      }else{
+        calcSumByType(extra.currentDataSource);
+      }
+    } else {
+      calcSumByType(extra.currentDataSource);
+    }
     console.log("params", pagination, filters, sorter, extra);
   }
   function onDateFilter(data) {
     let tempList = [...ogList];
     if (data != null) {
-     const res = tempList.filter((listitem) => {
+      const res = tempList.filter((listitem) => {
         return dayjs(data).isSame(listitem.dueDate, "month");
       });
       tempList = res;
     }
     calcAllSum(tempList);
+    calcSumByType(tempList);
     SetList(tempList);
     console.log(tempList);
   }
@@ -77,10 +90,22 @@ function Main() {
     {
       title: "Owner",
       dataIndex: "owner",
+      filters: [
+        { text: "Bálint", value: "Bálint" },
+        { text: "Aliz", value: "Aliz" },
+      ],
+      onFilter: (value, record) => record.owner.includes(value),
+      sorter: (a, b) => a.owner.localeCompare(b.owner),
     },
     {
       title: "Periodic",
       dataIndex: "periodic",
+      filters: [
+        { text: "Egyszeri", value: "Egyszeri" },
+        { text: "Rendszeres", value: "Rendszeres" },
+      ],
+      onFilter: (value, record) => record.periodic.includes(value),
+      sorter: (a, b) => a.periodic.localeCompare(b.periodic),
     },
     {
       title: "Action",
@@ -90,7 +115,7 @@ function Main() {
       render: (text, record) => (
         <Space size="middle">
           <Button type="primary">Edit</Button>
-          <Button disabled type="delete" danger onClick={() => deleteTodo(record._id)}>
+          <Button type="delete" danger onClick={() => deleteTodo(record._id)}>
             Delete
           </Button>
         </Space>
@@ -129,7 +154,8 @@ function Main() {
           summa += parseInt(site.amount);
           SetOgList(response.data);
         });
-        calcAllSum(response.data)
+        calcAllSum(response.data);
+        calcSumByType(response.data);
         SetList(response.data);
       }
 
@@ -139,6 +165,29 @@ function Main() {
     } catch (error) {
       console.error(error);
     }
+  }
+
+  function calcSumWithOneType(newlist) {
+    let typesum = {};
+    newlist.map((listitem) => {
+      typesum[listitem.name] = parseInt(listitem.amount);
+      // summa += parseInt(listitem.amount);
+    });
+    setpieData(typesum);
+  }
+
+  function calcSumByType(newlist) {
+    let typesum = {};
+    newlist.map((listitem) => {
+      if (typesum[listitem.type] === undefined) {
+        typesum[listitem.type] = parseInt(listitem.amount);
+      } else {
+        typesum[listitem.type] += parseInt(listitem.amount);
+      }
+      // summa += parseInt(listitem.amount);
+    });
+    setsumByType(typesum);
+    setpieData(typesum);
   }
 
   function calcAllSum(newlist) {
@@ -177,20 +226,6 @@ function Main() {
       console.error(error);
     }
   }
-
-  /*   async function deleteManyApi(id, cb) {
-    try {
-      const response = await axios({
-        method: "delete",
-        url: "http://192.168.0.111:4000/api/deleteMany",
-        data: { id: id },
-      });
-
-      console.log(response);
-    } catch (error) {
-      console.error(error);
-    }
-  } */
 
   async function modifyTodoApi(data, cb) {
     try {
@@ -252,13 +287,11 @@ function Main() {
     <div className="App">
       <header className="App-header">
         <div className="table_btns">
+          <div className="sum_num">Total: {allSum} HUF</div>
           <DatePicker onChange={(e) => onDateFilter(e)} picker="month" />
           <Button name="refresh" onClick={() => getUser()} value="refresh">
             Refresh
           </Button>
-          {/*        <Button name="deletemany" onClick={() => deleteTodoApi()} value="refresh">
-          Delete Not Done
-        </Button> */}
           <Button
             type="button"
             name="filter"
@@ -268,9 +301,8 @@ function Main() {
             Filter
           </Button>
           <NewItemModal createFn={createTodoApi} getUserFn={getUser} />
-          <Table columns={columns} dataSource={list} onChange={onChange} />
         </div>
-        <div>Total: {allSum} HUF</div>
+
         {/*         <div>
           {list.map((tet) => {
             return (
@@ -288,6 +320,16 @@ function Main() {
           })}
         </div> */}
       </header>
+      <div className="container">
+        <Row>
+          <Col className="gutter-row" span={18}>
+            <Table columns={columns} dataSource={list} onChange={onChange} />
+          </Col>
+          <Col className="gutter-row" span={6}>
+            <PieChart datas={pieData} />
+          </Col>
+        </Row>
+      </div>
     </div>
   );
 }
