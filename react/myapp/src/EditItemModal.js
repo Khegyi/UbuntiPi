@@ -8,67 +8,31 @@ import {
   Radio,
   InputNumber,
   Row,
-  Input,
   Select,
   DatePicker,
   Space,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 
-function NewItemModal({createFn, closeModal, isOpen }) {
+function EditItemModal({ modifyFn, editDataRecord, tut, closeModal, isOpen }) {
+
+const [first, setfirst] = useState(tut);
 
 /* 
 const edit = useRef(editDataRecord)
  */
- // console.log(editDataRecord);
+  
 
-
-  const config = {
-    rules: [
-      {
-        type: "object",
-        required: true,
-        message: "Please select time!",
-      },
-    ],
-  };
-  const onFinish = (values) => {
-    const formdata = values.user;
-    console.log(formdata);
-    formdata['dueDate'] = dayjs(formdata['dueDate']).format('YYYY-MM-DD');
-
-    createFn(formdata);
-  };
-
-  const layout = {
-    labelCol: {
-      span: 8,
-    },
-    wrapperCol: {
-      span: 16,
-    },
-  };
-  /* eslint-disable no-template-curly-in-string */
-
-  const validateMessages = {
-    required: "${label} is required!",
-    types: {
-      email: "${label} is not a valid email!",
-      number: "${label} is not a valid number!",
-    },
-    number: {
-      range: "${label} must be between ${min} and ${max}",
-    },
-  };
-
-
+function setasd(text){
+  setfirst(text)
+}
 
   const { Option } = Select;
   return (
     <>
 
       <Drawer
-        title="Create a new account"
+        title="Edit item"
         width={720}
         onClose={closeModal}
         visible={isOpen}
@@ -79,7 +43,13 @@ const edit = useRef(editDataRecord)
           </Space>
         }
       >
-        <Form
+<input defaultValue={first}
+
+></input>
+
+<Button onClick={() => setasd("gersdfsdf")}>gersdfsdf</Button>
+<Button onClick={() =>setasd("oidfogidf")}>oidfogidf</Button>
+       {/*  <Form
           {...layout}
           name="nest-messages"
           onFinish={onFinish}
@@ -95,16 +65,16 @@ const edit = useRef(editDataRecord)
               },
             ]}
           >
-            <Input />
+            <Input defaultValue={(Object.keys(editDataRecord).length != 0 ? editDataRecord.name : "")}  />
           </Form.Item>
           <Form.Item
             name={["user", "type"]}
             label="Type"
-            /*             rules={[
+                        rules={[
               {
                 type: "email",
               },
-            ]} */
+            ]}
           >
             <Select
               showSearch
@@ -112,7 +82,7 @@ const edit = useRef(editDataRecord)
               placeholder="Type"
               name="type"
               optionFilterProp="children"
-              /*   onSelect={(e, t) => modifyNewTodo(e, t, "type")} */
+              
               filterOption={(input, option) =>
                 option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }
@@ -176,13 +146,13 @@ const edit = useRef(editDataRecord)
 
           <Form.Item wrapperCol={{ ...layout.wrapperCol, offset: 8 }}>
             <Button type="primary" htmlType="submit">
-              Submit
+              Edit
             </Button>
           </Form.Item>
-        </Form>
+        </Form> */}
       </Drawer>
     </>
   );
 }
 
-export default NewItemModal;
+export default EditItemModal;

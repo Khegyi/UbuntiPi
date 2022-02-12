@@ -3,10 +3,12 @@ import "./App.css";
 import axios from "axios";
 import * as dayjs from "dayjs";
 import NewItemModal from "./NewItemModal";
+import EditItemModal from "./EditItemModal";
+import EditableTable from "./EditableTable";
 import { Select, Switch, DatePicker, Space, Button, Input, Table } from "antd";
 import { Row, Col, Divider } from "antd";
 import PieChart from "./PieChart";
-
+import { PlusOutlined } from "@ant-design/icons";
 import "antd/dist/antd.css";
 
 function Main() {
@@ -16,10 +18,16 @@ function Main() {
   const [newTodo, SetNewTodo] = useState({});
   const [sumByType, setsumByType] = useState([]);
   const [pieData, setpieData] = useState({});
+  const [editData, seteditData] = useState({});
+  const [isModalOpen, setisModalOpen] = useState(false);
+
+
+  
   /* const [filter, SetFilter] = useState({ done: false}); */
 
   const { Option } = Select;
   function onChange(pagination, filters, sorter, extra) {
+    console.log("gte")
     calcAllSum(extra.currentDataSource);
     if (filters.type != undefined) {
       if (filters.type.length == 1) {
@@ -44,6 +52,12 @@ function Main() {
     calcSumByType(tempList);
     SetList(tempList);
     console.log(tempList);
+  }
+
+  function editTodo (data) {
+    seteditData(data);
+    console.log(data)
+    //showEditDrawer();
   }
 
   const columns = [
@@ -73,6 +87,7 @@ function Main() {
       title: "Amount",
       dataIndex: "amount",
       sorter: (a, b) => a.amount - b.amount,
+      render:(am)=>am.toLocaleString('hu')+'ft'
     },
     /*    {
       title: "Status",
@@ -114,7 +129,7 @@ function Main() {
       width: 100,
       render: (text, record) => (
         <Space size="middle">
-          <Button type="primary">Edit</Button>
+          <Button type="primary" onClick={() => editTodo(record)} >Edit</Button>
           <Button type="delete" danger onClick={() => deleteTodo(record._id)}>
             Delete
           </Button>
@@ -227,7 +242,7 @@ function Main() {
     }
   }
 
-  async function modifyTodoApi(data, cb) {
+  async function modifyTodoApi(data) {
     try {
       const response = await axios({
         method: "patch",
@@ -236,7 +251,7 @@ function Main() {
       });
 
       console.log(response);
-      cb();
+      getUser();
     } catch (error) {
       console.error(error);
     }
@@ -279,6 +294,19 @@ function Main() {
     }
   }
 
+  const showDrawer = () => {
+    setisModalOpen(true);
+  //  console.log("open");
+  };
+  
+  const onCloseDrawer = () => {
+    setisModalOpen(false);
+   // seteditData({});
+  };
+
+
+
+
   useEffect(() => {
     getUser();
   }, []);
@@ -287,7 +315,7 @@ function Main() {
     <div className="App">
       <header className="App-header">
         <div className="table_btns">
-          <div className="sum_num">Total: {allSum} HUF</div>
+          <div className="sum_num">Total: {allSum.toLocaleString('hu') }Ft</div>
           <DatePicker onChange={(e) => onDateFilter(e)} picker="month" />
           <Button name="refresh" onClick={() => getUser()} value="refresh">
             Refresh
@@ -300,35 +328,26 @@ function Main() {
           >
             Filter
           </Button>
-          <NewItemModal createFn={createTodoApi} getUserFn={getUser} />
+          <Button type="primary" onClick={showDrawer} icon={<PlusOutlined />}>
+            New Spending
+          </Button>
+          <NewItemModal createFn={createTodoApi} modifyFn={modifyTodoApi} closeModal={onCloseDrawer}  isOpen={isModalOpen} />
+      
         </div>
 
-        {/*         <div>
-          {list.map((tet) => {
-            return (
-              <div data-isdone={tet.done} key={tet._id}>
-                <div>
-                  {tet.name}
-                  {tet.description}
-                  {tet.dueDate}
-                  {tet.status}
-                  <Button onClick={() => completeTodo(tet._id)}>Done</Button>
-                  <Button onClick={() => deleteTodo(tet._id)}>Delete</Button>
-                </div>
-              </div>
-            );
-          })}
-        </div> */}
       </header>
       <div className="container">
         <Row>
-          <Col className="gutter-row" span={18}>
-            <Table columns={columns} dataSource={list} onChange={onChange} />
-          </Col>
-          <Col className="gutter-row" span={6}>
+        <Col className="gutter-row" span={6}>
             <PieChart datas={pieData} />
           </Col>
+          <Col className="gutter-row" span={18}>
+          {/*  <Table columns={columns} dataSource={list} onChange={onChange} /> */}
+          <EditableTable   columns={columns} dataSource={list} onChange={onChange} deleteTodo={deleteTodo} editTodo={editTodo} />
+          </Col>
+  
         </Row>
+
       </div>
     </div>
   );
